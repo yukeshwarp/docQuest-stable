@@ -5,7 +5,6 @@ from utils.llm_interaction import ask_question
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import io
-import tiktoken  
 
 
 if 'documents' not in st.session_state:
@@ -20,21 +19,16 @@ def handle_question(prompt):
     if prompt:
         try:
             with st.spinner('Thinking...'):
-                answer, prompt_tokens = ask_question(
+                answer = ask_question(
                     st.session_state.documents, prompt, st.session_state.chat_history
                 )
             
             st.session_state.chat_history.append({
                 "question": prompt,
-                "answer": answer,
-                "prompt_tokens": prompt_tokens,
+                "answer": answer
             })
             
             display_chat()
-            
-            # Display the prompt token count in the sidebar
-            st.sidebar.write(f"Prompt Message Tokens: {prompt_tokens}")
-            
         except Exception as e:
             st.error(f"Error processing question: {e}")
 
