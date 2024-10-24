@@ -261,7 +261,6 @@ def ask_question(documents, question, chat_history):
         return "The content of the provided documents does not contain an answer to your question."
 
     combined_relevant_content = ""
-    total_relevant_tokens = 0  # Track the token count for relevant content
     for page in relevant_pages:
         page_content = (
             f"\nDocument: {page['doc_name']}, Page {page['page_number']}\n"
@@ -270,7 +269,6 @@ def ask_question(documents, question, chat_history):
             f"Image Analysis: {page['image_explanation']}\n"
         )
         combined_relevant_content += page_content
-        total_relevant_tokens += calculate_token_count(page_content)
 
     conversation_history = "".join(
         f"User: {preprocess_text(chat['question'])}\nAssistant: {preprocess_text(chat['answer'])}\n"
@@ -295,8 +293,6 @@ def ask_question(documents, question, chat_history):
         Include references to the document name and page number(s) where the information was found.
 
         Question: {preprocessed_question}
-
-        Total token count for relevant content: {total_relevant_tokens}
         """
     )
     
