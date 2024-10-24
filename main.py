@@ -16,36 +16,25 @@ if 'uploaded_files' not in st.session_state:
     st.session_state.uploaded_files = []
 
 
-def count_tokens(text, model="gpt-4o"):
-    """Count the tokens in a given text."""
-    encoding = tiktoken.encoding_for_model(model)
-    tokens = encoding.encode(text)
-    return len(tokens)
-
-
 def handle_question(prompt):
     if prompt:
         try:
-            
-            input_tokens = count_tokens(prompt)
-            document_tokens = count_tokens(json.dumps(st.session_state.documents))
-            total_input_tokens = input_tokens + document_tokens
-            st.sidebar.write(f"Total cur Input Tokens: {total_input_tokens}")
-            
             with st.spinner('Thinking...'):
-                answer = ask_question(
+                answer, prompt_tokens = ask_question(
                     st.session_state.documents, prompt, st.session_state.chat_history
                 )
             
-            output_tokens = count_tokens(answer)
             st.session_state.chat_history.append({
                 "question": prompt,
                 "answer": answer,
-                "input_tokens": total_input_tokens,
-                "output_tokens": output_tokens
+                "prompt_tokens": prompt_tokens,
             })
             
             display_chat()
+            
+            # Display the prompt token count in the sidebar
+            st.sidebar.write(f"Prompt Message Tokens: {prompt_tokens}")
+            
         except Exception as e:
             st.error(f"Error processing question: {e}")
 
@@ -62,12 +51,12 @@ def display_chat():
             user_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:right;'> 
             {chat['question']}
-            <small style='color:grey;'>Tokens: {chat['input_tokens']}</small></div>
+            </div>
             """
             assistant_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'> 
             {chat['answer']}
-            <small style='color:grey;'>Tokens: {chat['output_tokens']}</small></div>
+            </div>
             """
             st.markdown(user_message, unsafe_allow_html=True)
             st.markdown(assistant_message, unsafe_allow_html=True)
@@ -137,8 +126,3 @@ if st.session_state.documents:
 
     if prompt:
         handle_question(prompt)  
-
-total_input_tokens = sum(chat["input_tokens"] for chat in st.session_state.chat_history)
-total_output_tokens = sum(chat["output_tokens"] for chat in st.session_state.chat_history)
-st.sidebar.write(f"Total Input Tokens: {total_input_tokens}")
-st.sidebar.write(f"Total Output Tokens: {total_output_tokens}")
