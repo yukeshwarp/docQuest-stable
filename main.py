@@ -152,7 +152,7 @@ with st.sidebar:
             label="Download Document Analysis",
             data=download_data,
             file_name="document_analysis.json",
-            mime="application/json",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
 
 # App header and main interface
