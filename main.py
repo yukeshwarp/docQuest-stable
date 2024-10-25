@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 from utils.pdf_processing import process_pdf_pages
-from utils.llm_interaction import ask_question
+from utils.llm_interaction import ask_question_stream  # Use the streaming version
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import io
@@ -22,7 +22,7 @@ def count_tokens(text, model="gpt-4o"):
     tokens = encoding.encode(text)
     return len(tokens)
 
-# Handle user question
+# Handle user question with streaming response
 def handle_question(prompt):
     if prompt:
         try:
@@ -31,16 +31,21 @@ def handle_question(prompt):
             total_input_tokens = input_tokens + document_tokens
             st.sidebar.write(f"Total cur Input Tokens: {total_input_tokens}")
             
-            with st.spinner('Thinking...'):
-                answer = ask_question(
-                    st.session_state.documents, prompt, st.session_state.chat_history
-                )
-            
-            output_tokens = count_tokens(answer)
+            # Placeholder for dynamic response
+            response_placeholder = st.empty()  # Placeholder for the streaming response
+            full_answer = ""  # Accumulate the answer here as chunks arrive
 
+            with st.spinner('Thinking...'):
+                for chunk in ask_question_stream(st.session_state.documents, prompt, st.session_state.chat_history):
+                    full_answer += chunk
+                    response_placeholder.markdown(f"<div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>{full_answer}</div>", unsafe_allow_html=True)
+
+            output_tokens = count_tokens(full_answer)
+
+            # Store the chat history
             st.session_state.chat_history.append({
                 "question": prompt,
-                "answer": answer,
+                "answer": full_answer,
                 "input_tokens": total_input_tokens,
                 "output_tokens": output_tokens
             })
