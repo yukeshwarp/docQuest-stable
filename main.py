@@ -7,6 +7,7 @@ import logging
 import io
 import tiktoken  
 from docx import Document
+import time  # For adding slight delays in word-by-word streaming
 
 # Initialize session state
 if 'documents' not in st.session_state:
@@ -22,7 +23,7 @@ def count_tokens(text, model="gpt-4o"):
     tokens = encoding.encode(text)
     return len(tokens)
 
-# Handle user question with streaming response
+# Handle user question with word-by-word streaming response
 def handle_question(prompt):
     if prompt:
         try:
@@ -37,8 +38,14 @@ def handle_question(prompt):
 
             with st.spinner('Thinking...'):
                 for chunk in ask_question_stream(st.session_state.documents, prompt, st.session_state.chat_history):
-                    full_answer += chunk
-                    response_placeholder.markdown(f"<div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>{full_answer}</div>", unsafe_allow_html=True)
+                    # Display each word as it arrives for a smooth streaming effect
+                    for word in chunk.split():
+                        full_answer += word + " "
+                        response_placeholder.markdown(
+                            f"<div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>{full_answer}</div>",
+                            unsafe_allow_html=True
+                        )
+                        time.sleep(0.05)  # Adjust this delay for a slower or faster display
 
             output_tokens = count_tokens(full_answer)
 
