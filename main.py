@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import io
 import tiktoken  
+from docx import Document
 
 
 if 'documents' not in st.session_state:
@@ -26,7 +27,6 @@ def count_tokens(text, model="gpt-4o"):
 def handle_question(prompt):
     if prompt:
         try:
-            
             input_tokens = count_tokens(prompt)
             document_tokens = count_tokens(json.dumps(st.session_state.documents))
             total_input_tokens = input_tokens + document_tokens
@@ -37,10 +37,8 @@ def handle_question(prompt):
                     st.session_state.documents, prompt, st.session_state.chat_history
                 )
             
-            
             output_tokens = count_tokens(answer)
 
-            
             st.session_state.chat_history.append({
                 "question": prompt,
                 "answer": answer,
@@ -48,7 +46,6 @@ def handle_question(prompt):
                 "output_tokens": output_tokens
             })
 
-            
             display_chat()
         except Exception as e:
             st.error(f"Error processing question: {e}")
@@ -84,26 +81,29 @@ def display_chat():
                 "output_tokens": chat["output_tokens"]
             }
 
-            # Convert to JSON or plain text
-            chat_json = json.dumps(chat_content, indent=4)
-            chat_text = f"Question: {chat['question']}\nAnswer: {chat['answer']}\n"
+            # Create a Word document for download
+            def generate_word_document(content):
+                doc = Document()
+                doc.add_heading('Chat Response', 0)
+                doc.add_paragraph(f"Question: {content['question']}")
+                doc.add_paragraph(f"Answer: {content['answer']}")
+                doc.add_paragraph(f"Input Tokens: {content['input_tokens']}")
+                doc.add_paragraph(f"Output Tokens: {content['output_tokens']}")
+                return doc
 
-            # Provide a download button for each response
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="Download as JSON",
-                    data=chat_json,
-                    file_name=f"chat_{i+1}.json",
-                    mime="application/json"
-                )
-            with col2:
-                st.download_button(
-                    label="Download as Text",
-                    data=chat_text,
-                    file_name=f"chat_{i+1}.txt",
-                    mime="text/plain"
-                )
+            # Generate the Word document in memory
+            doc = generate_word_document(chat_content)
+            word_io = io.BytesIO()
+            doc.save(word_io)
+            word_io.seek(0)
+
+            # Provide a download button for the Word document
+            st.download_button(
+                label="Download as Word",
+                data=word_io,
+                file_name=f"chat_{i+1}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
 
 with st.sidebar:
@@ -140,7 +140,6 @@ with st.sidebar:
                     for i, future in enumerate(as_completed(future_to_file)):
                         uploaded_file = future_to_file[future]
                         try:
-                            
                             document_data = future.result()
                             st.session_state.documents[uploaded_file.name] = document_data
 
@@ -148,7 +147,6 @@ with st.sidebar:
                         except Exception as e:
                             st.error(f"Error processing {uploaded_file.name}: {e}")
 
-                        
                         progress_bar.progress((i + 1) / total_files)
                     
             progress_text.text("Processing complete.")
@@ -170,10 +168,8 @@ st.subheader("Unveil the Essence, Compare Easily, Analyze Smartly", divider="ora
 
 if st.session_state.documents:
 
-    
     prompt = st.chat_input("Ask me anything about your documents", key="chat_input")
 
-    
     if prompt:
         handle_question(prompt)  
 
