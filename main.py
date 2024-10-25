@@ -97,7 +97,7 @@ def display_chat():
 
             # Provide a download button for the Word document
             st.download_button(
-                label="Download as Word",
+                label="📥",
                 data=word_io,
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
