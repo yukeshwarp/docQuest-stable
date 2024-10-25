@@ -1,13 +1,12 @@
 import streamlit as st
 import json
 from utils.pdf_processing import process_pdf_pages
-from utils.llm_interaction import ask_question_stream  # Use the streaming version
+from utils.llm_interaction import ask_question
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import io
 import tiktoken  
 from docx import Document
-import time  # For adding slight delays in word-by-word streaming
 
 # Initialize session state
 if 'documents' not in st.session_state:
@@ -23,7 +22,7 @@ def count_tokens(text, model="gpt-4o"):
     tokens = encoding.encode(text)
     return len(tokens)
 
-# Handle user question with word-by-word streaming response
+# Handle user question
 def handle_question(prompt):
     if prompt:
         try:
@@ -32,27 +31,16 @@ def handle_question(prompt):
             total_input_tokens = input_tokens + document_tokens
             st.sidebar.write(f"Total cur Input Tokens: {total_input_tokens}")
             
-            # Placeholder for dynamic response
-            response_placeholder = st.empty()  # Placeholder for the streaming response
-            full_answer = ""  # Accumulate the answer here as chunks arrive
-
             with st.spinner('Thinking...'):
-                for chunk in ask_question_stream(st.session_state.documents, prompt, st.session_state.chat_history):
-                    # Display each word as it arrives for a smooth streaming effect
-                    for word in chunk.split():
-                        full_answer += word + " "
-                        response_placeholder.markdown(
-                            f"<div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>{full_answer}</div>",
-                            unsafe_allow_html=True
-                        )
-                        time.sleep(0.05)  # Adjust this delay for a slower or faster display
+                answer = ask_question(
+                    st.session_state.documents, prompt, st.session_state.chat_history
+                )
+            
+            output_tokens = count_tokens(answer)
 
-            output_tokens = count_tokens(full_answer)
-
-            # Store the chat history
             st.session_state.chat_history.append({
                 "question": prompt,
-                "answer": full_answer,
+                "answer": answer,
                 "input_tokens": total_input_tokens,
                 "output_tokens": output_tokens
             })

@@ -198,29 +198,29 @@ def summarize_page(page_text, previous_summary, page_number, system_prompt, max_
             time.sleep(jitter)
 
 
-def ask_question_stream(documents, question, chat_history):
+def ask_question(documents, question, chat_history):
     headers = HEADERS
     preprocessed_question = preprocess_text(question)
-
-    # Token calculation helper
+    
     def calculate_token_count(text):
         return len(text.split())  
-
-    # Count tokens for question and document data
+    
     total_tokens = calculate_token_count(preprocessed_question)
+
+    # Calculate token count for all pages, removing the token limit check
     for doc_name, doc_data in documents.items():
         for page in doc_data["pages"]:
             total_tokens += calculate_token_count(page.get('text_summary', 'No summary available'))
             total_tokens += calculate_token_count(page.get('full_text', 'No full text available'))
 
-    # Check relevance
+    # No token limit check, always run relevance checking
     def check_page_relevance(doc_name, page):
         page_summary = page.get('text_summary', 'No summary available') 
         page_full_text = page.get('full_text', 'No full text available') 
         image_explanation = "\n".join(
             f"Page {img['page_number']}: {img['explanation']}" for img in page.get("image_analysis", [])
         ) or "No image analysis."
-
+        
         relevance_check_prompt = f"""
         You are an assistant that checks if a specific document page contains an answer to the user's question.
         Here's the summary, full text, and image analysis of a page:
@@ -248,7 +248,7 @@ def ask_question_stream(documents, question, chat_history):
                 f"{azure_endpoint}/openai/deployments/{model}/chat/completions?api-version={api_version}",
                 headers=headers,
                 json=relevance_data,
-                timeout=60
+                timeout=60  
             )
             response.raise_for_status()
             relevance_answer = response.json().get('choices', [{}])[0].get('message', {}).get('content', "no").strip().lower()
@@ -266,7 +266,7 @@ def ask_question_stream(documents, question, chat_history):
             logging.error(f"Error checking relevance of page {page['page_number']} in '{doc_name}': {e}")
             return None
 
-    # Fetch relevant pages in parallel
+    
     relevant_pages = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_page = {
@@ -280,10 +280,9 @@ def ask_question_stream(documents, question, chat_history):
             if result:
                 relevant_pages.append(result)
 
-    # Prepare the prompt if there are relevant pages
+    
     if not relevant_pages:
-        yield "The content of the provided documents does not contain an answer to your question."
-        return
+        return "The content of the provided documents does not contain an answer to your question."
 
     combined_relevant_content = ""
     for page in relevant_pages:
@@ -320,35 +319,30 @@ def ask_question_stream(documents, question, chat_history):
         """
     )
 
-    # Streaming request setup
-    stream_data = {
+    prompt_tokens = calculate_token_count(prompt_message)  # Update token counting function
+    logging.error(prompt_tokens)
+    
+    final_data = {
         "model": model,
         "messages": [
             {"role": "system", "content": "You are an assistant that answers questions based only on provided knowledge base."},
             {"role": "user", "content": prompt_message}
         ],
-        "temperature": 0.0,
-        "stream": True
+        "temperature": 0.0
     }
 
     try:
         response = requests.post(
             f"{azure_endpoint}/openai/deployments/{model}/chat/completions?api-version={api_version}",
             headers=headers,
-            json=stream_data,
-            stream=True  
+            json=final_data,
+            timeout=60  
         )
-        
         response.raise_for_status()
-
-        # Process streaming response
-        for line in response.iter_lines():
-            if line:
-                json_line = json.loads(line.decode("utf-8"))
-                content = json_line.get("choices", [{}])[0].get("delta", {}).get("content", "")
-                if content:
-                    yield content  # Yield each chunk of the response text as it arrives
+        return response.json().get('choices', [{}])[0].get('message', {}).get('content', "No answer provided.").strip()
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error while streaming answer for question '{question}': {e}")
-        yield "Error while processing the request."
+        if e.response:
+            logging.error(f"Error {e.response.status_code} while answering question '{question}': {e}")
+        else:
+            logging.error(f"Error answering question '{question}': {e}")
