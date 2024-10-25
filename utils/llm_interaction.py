@@ -182,6 +182,7 @@ def summarize_page(page_text, previous_summary, page_number, system_prompt, max_
                 timeout=50
             )
             response.raise_for_status()
+            logging.info(f"Summary retrieved for page {page_number} at {time.strftime('%Y-%m-%d %H:%M:%S')}")
             return response.json().get('choices', [{}])[0].get('message', {}).get('content', "No summary provided.").strip()
         
         except requests.exceptions.RequestException as e:
