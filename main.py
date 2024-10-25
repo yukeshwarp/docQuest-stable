@@ -62,7 +62,7 @@ def reset_session():
 
 def display_chat():
     if st.session_state.chat_history:
-        for chat in st.session_state.chat_history:
+        for i, chat in enumerate(st.session_state.chat_history):
             user_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:right;'> 
             {chat['question']}
@@ -75,6 +75,35 @@ def display_chat():
             """
             st.markdown(user_message, unsafe_allow_html=True)
             st.markdown(assistant_message, unsafe_allow_html=True)
+
+            # Prepare the content for download (Question and Answer)
+            chat_content = {
+                "question": chat["question"],
+                "answer": chat["answer"],
+                "input_tokens": chat["input_tokens"],
+                "output_tokens": chat["output_tokens"]
+            }
+
+            # Convert to JSON or plain text
+            chat_json = json.dumps(chat_content, indent=4)
+            chat_text = f"Question: {chat['question']}\nAnswer: {chat['answer']}\n"
+
+            # Provide a download button for each response
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="Download as JSON",
+                    data=chat_json,
+                    file_name=f"chat_{i+1}.json",
+                    mime="application/json"
+                )
+            with col2:
+                st.download_button(
+                    label="Download as Text",
+                    data=chat_text,
+                    file_name=f"chat_{i+1}.txt",
+                    mime="text/plain"
+                )
 
 
 with st.sidebar:
