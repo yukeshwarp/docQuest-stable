@@ -346,7 +346,7 @@ def ask_question(documents, question, chat_history):
             {"role": "system", "content": "You are an assistant that answers questions based only on provided knowledge base."},
             {"role": "user", "content": prompt_message}
         ],
-        "temperature": 0.0
+        "temperature": 0.2
     }
 
     try:
