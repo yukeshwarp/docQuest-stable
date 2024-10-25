@@ -206,116 +206,97 @@ def ask_question(documents, question, chat_history):
     
     total_tokens = calculate_token_count(preprocessed_question)
 
+    # Calculate token count for all pages, removing the token limit check
     for doc_name, doc_data in documents.items():
         for page in doc_data["pages"]:
             total_tokens += calculate_token_count(page.get('text_summary', 'No summary available'))
             total_tokens += calculate_token_count(page.get('full_text', 'No full text available'))
 
-    if total_tokens > 120000:
+    # No token limit check, always run relevance checking
+    def check_page_relevance(doc_name, page):
+        page_summary = page.get('text_summary', 'No summary available') 
+        page_full_text = page.get('full_text', 'No full text available') 
+        image_explanation = "\n".join(
+            f"Page {img['page_number']}: {img['explanation']}" for img in page.get("image_analysis", [])
+        ) or "No image analysis."
         
-        def check_page_relevance(doc_name, page):
-            page_summary = page.get('text_summary', 'No summary available') 
-            page_full_text = page.get('full_text', 'No full text available') 
-            image_explanation = "\n".join(
-                f"Page {img['page_number']}: {img['explanation']}" for img in page["image_analysis"]
-            ) if page["image_analysis"] else "No image analysis."
+        relevance_check_prompt = f"""
+        You are an assistant that checks if a specific document page contains an answer to the user's question.
+        Here's the summary, full text, and image analysis of a page:
 
-            
-            relevance_check_prompt = f"""
-            You are an assistant that checks if a specific document page contains an answer to the user's question.
-            Here's the summary, full text, and image analysis of a page:
+        Document: {doc_name}, Page {page['page_number']}
+        Summary: {page_summary}
+        Image Analysis: {image_explanation}
 
-            Document: {doc_name}, Page {page['page_number']}
-            Summary: {page_summary}
-            Image Analysis: {image_explanation}
+        Based on the content above, answer this question: {preprocessed_question}
 
-            Based on the content above, answer this question: {preprocessed_question}
+        Respond with "yes" if this page contains relevant information, otherwise respond with "no".
+        """
 
-            Respond with "yes" if this page contains relevant information, otherwise respond with "no".
-            """
+        relevance_data = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "You are an assistant that determines if a page is relevant to a question."},
+                {"role": "user", "content": relevance_check_prompt}
+            ],
+            "temperature": 0.0
+        }
 
-            relevance_data = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "You are an assistant that determines if a page is relevant to a question."},
-                    {"role": "user", "content": relevance_check_prompt}
-                ],
-                "temperature": 0.0
-            }
-
-            try:
-                response = requests.post(
-                    f"{azure_endpoint}/openai/deployments/{model}/chat/completions?api-version={api_version}",
-                    headers=headers,
-                    json=relevance_data,
-                    timeout=60  
-                )
-                response.raise_for_status()
-                relevance_answer = response.json().get('choices', [{}])[0].get('message', {}).get('content', "no").strip().lower()
-
-                if relevance_answer == "yes":
-                    return {
-                        "doc_name": doc_name,
-                        "page_number": page["page_number"],
-                        "text_summary": page_summary,
-                        "full_text": page_full_text,
-                        "image_explanation": image_explanation
-                    }
-
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Error checking relevance of page {page['page_number']} in '{doc_name}': {e}")
-                return None
-
-        
-        relevant_pages = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_page = {
-                executor.submit(check_page_relevance, doc_name, page): (doc_name, page)
-                for doc_name, doc_data in documents.items()
-                for page in doc_data["pages"]
-            }
-
-            for future in concurrent.futures.as_completed(future_to_page):
-                result = future.result()
-                if result:
-                    relevant_pages.append(result)
-
-        
-        if not relevant_pages:
-            return "The content of the provided documents does not contain an answer to your question."
-
-        combined_relevant_content = ""
-        for page in relevant_pages:
-            combined_relevant_content += (
-                f"\nDocument: {page['doc_name']}, Page {page['page_number']}\n"
-                f"Summary: {page['text_summary']}\n"
-                f"Full Text: {page['full_text']}\n"
-                f"Image Analysis: {page['image_explanation']}\n"
+        try:
+            response = requests.post(
+                f"{azure_endpoint}/openai/deployments/{model}/chat/completions?api-version={api_version}",
+                headers=headers,
+                json=relevance_data,
+                timeout=60  
             )
-    else:
-        
-        combined_relevant_content = ""
-        for doc_name, doc_data in documents.items():
-            for page in doc_data["pages"]:
-                page_summary = page.get('text_summary', 'No summary available')
-                page_full_text = page.get('full_text', 'No full text available')
-                image_explanation = "\n".join(
-                    f"Page {img['page_number']}: {img['explanation']}" for img in page["image_analysis"]
-                ) if page["image_analysis"] else "No image analysis."
-                combined_relevant_content += (
-                    f"\nDocument: {doc_name}, Page {page['page_number']}\n"
-                    f"Summary: {page_summary}\n"
-                    f"Full Text: {page_full_text}\n"
-                    f"Image Analysis: {image_explanation}\n"
-                )
+            response.raise_for_status()
+            relevance_answer = response.json().get('choices', [{}])[0].get('message', {}).get('content', "no").strip().lower()
+
+            if relevance_answer == "yes":
+                return {
+                    "doc_name": doc_name,
+                    "page_number": page["page_number"],
+                    "text_summary": page_summary,
+                    "full_text": page_full_text,
+                    "image_explanation": image_explanation
+                }
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error checking relevance of page {page['page_number']} in '{doc_name}': {e}")
+            return None
 
     
+    relevant_pages = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_page = {
+            executor.submit(check_page_relevance, doc_name, page): (doc_name, page)
+            for doc_name, doc_data in documents.items()
+            for page in doc_data["pages"]
+        }
+
+        for future in concurrent.futures.as_completed(future_to_page):
+            result = future.result()
+            if result:
+                relevant_pages.append(result)
+
+    
+    if not relevant_pages:
+        return "The content of the provided documents does not contain an answer to your question."
+
+    combined_relevant_content = ""
+    for page in relevant_pages:
+        combined_relevant_content += (
+            f"\nDocument: {page['doc_name']}, Page {page['page_number']}\n"
+            f"Summary: {page['text_summary']}\n"
+            f"Full Text: {page['full_text']}\n"
+            f"Image Analysis: {page['image_explanation']}\n"
+        )
+
     conversation_history = "".join(
         f"User: {preprocess_text(chat['question'])}\nAssistant: {preprocess_text(chat['answer'])}\n"
         for chat in chat_history
     )
 
-    
     prompt_message = (
         f"""
         You are given the following relevant content from multiple documents:
@@ -337,7 +318,7 @@ def ask_question(documents, question, chat_history):
         """
     )
 
-    prompt_tokens = count_tokens(prompt_message)
+    prompt_tokens = calculate_token_count(prompt_message)  # Update token counting function
     logging.error(prompt_tokens)
     
     final_data = {
@@ -346,7 +327,7 @@ def ask_question(documents, question, chat_history):
             {"role": "system", "content": "You are an assistant that answers questions based only on provided knowledge base."},
             {"role": "user", "content": prompt_message}
         ],
-        "temperature": 0.2
+        "temperature": 0.0
     }
 
     try:
@@ -360,5 +341,7 @@ def ask_question(documents, question, chat_history):
         return response.json().get('choices', [{}])[0].get('message', {}).get('content', "No answer provided.").strip()
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error answering question '{question}': {e}")
-        raise Exception(f"Unable to answer the question due to network issues or API error.")
+        if e.response:
+            logging.error(f"Error {e.response.status_code} while answering question '{question}': {e}")
+        else:
+            logging.error(f"Error answering question '{question}': {e}")
