@@ -8,7 +8,7 @@ import io
 import tiktoken  
 from docx import Document
 
-
+# Initialize session state
 if 'documents' not in st.session_state:
     st.session_state.documents = {}
 if 'chat_history' not in st.session_state:
@@ -16,14 +16,13 @@ if 'chat_history' not in st.session_state:
 if 'uploaded_files' not in st.session_state:
     st.session_state.uploaded_files = []
 
-
+# Function to count tokens
 def count_tokens(text, model="gpt-4o"):
-    """Count the tokens in a given text."""
     encoding = tiktoken.encoding_for_model(model)
     tokens = encoding.encode(text)
     return len(tokens)
 
-
+# Handle user question
 def handle_question(prompt):
     if prompt:
         try:
@@ -46,17 +45,16 @@ def handle_question(prompt):
                 "output_tokens": output_tokens
             })
 
-            display_chat()
         except Exception as e:
             st.error(f"Error processing question: {e}")
 
-
+# Reset session state
 def reset_session():
     st.session_state.documents = {}
     st.session_state.chat_history = []
     st.session_state.uploaded_files = []
 
-
+# Function to display chat history
 def display_chat():
     if st.session_state.chat_history:
         for i, chat in enumerate(st.session_state.chat_history):
@@ -73,7 +71,7 @@ def display_chat():
             st.markdown(user_message, unsafe_allow_html=True)
             st.markdown(assistant_message, unsafe_allow_html=True)
 
-            # Prepare the content for download (Question and Answer)
+            # Prepare content for download
             chat_content = {
                 "question": chat["question"],
                 "answer": chat["answer"],
@@ -81,7 +79,7 @@ def display_chat():
                 "output_tokens": chat["output_tokens"]
             }
 
-            # Create a Word document for download
+            # Generate Word document for download
             def generate_word_document(content):
                 doc = Document()
                 doc.add_heading('Chat Response', 0)
@@ -105,7 +103,7 @@ def display_chat():
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
-
+# Sidebar for file upload
 with st.sidebar:
     uploaded_files = st.file_uploader(
         " ",
@@ -123,14 +121,11 @@ with st.sidebar:
                 st.info(f"{uploaded_file.name} is already uploaded.")
 
         if new_files:
-            
             progress_text = st.empty()
             progress_bar = st.progress(0)
             total_files = len(new_files)
 
-            
             with st.spinner("Learning about your document(s)..."):
-                
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     future_to_file = {
                         executor.submit(process_pdf_pages, uploaded_file, first_file=(index == 0)): uploaded_file 
@@ -142,16 +137,15 @@ with st.sidebar:
                         try:
                             document_data = future.result()
                             st.session_state.documents[uploaded_file.name] = document_data
-
                             st.success(f"{uploaded_file.name} processed successfully!")
                         except Exception as e:
                             st.error(f"Error processing {uploaded_file.name}: {e}")
 
                         progress_bar.progress((i + 1) / total_files)
-                    
+
             progress_text.text("Processing complete.")
             progress_bar.empty()
-            
+
     if st.session_state.documents:
         download_data = json.dumps(st.session_state.documents, indent=4)
         st.download_button(
@@ -161,19 +155,21 @@ with st.sidebar:
             mime="application/json",
         )
 
-
+# App header and main interface
 st.image("logoD.png", width=200)
 st.title("docQuest")
 st.subheader("Unveil the Essence, Compare Easily, Analyze Smartly", divider="orange")
 
+# Chat interface
 if st.session_state.documents:
-
     prompt = st.chat_input("Ask me anything about your documents", key="chat_input")
-
     if prompt:
         handle_question(prompt)  
 
+# Display the chat history
+display_chat()
 
+# Token usage summary
 total_input_tokens = sum(chat["input_tokens"] for chat in st.session_state.chat_history)
 total_output_tokens = sum(chat["output_tokens"] for chat in st.session_state.chat_history)
 st.sidebar.write(f"Total Input Tokens: {total_input_tokens}")
