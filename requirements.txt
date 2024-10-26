@@ -7,4 +7,3 @@ tiktoken
 nltk
 python-docx
 pyperclip
-xclip
