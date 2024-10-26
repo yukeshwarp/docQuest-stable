@@ -94,13 +94,13 @@ def display_chat():
             word_io.seek(0)
 
             st.download_button(
-                label="📥",
+                label="↴",
                 data=word_io,
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
 
-            if st.button(f"Copy Chat {i+1} to Clipboard", key=f"copy_chat_{i+1}"):
+            if st.button(f"▣", key=f"copy_chat_{i+1}"):
                 pyperclip.copy(
                     f"Question: {chat['question']}\nAnswer: {chat['answer']}"
                 )
