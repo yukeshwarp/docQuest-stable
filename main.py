@@ -17,21 +17,28 @@ if "uploaded_files" not in st.session_state:
 def handle_question(prompt):
     if prompt:
         try:
+            # Immediately display the question in the chat
+            st.session_state.chat_history.append(
+                {
+                    "question": prompt,
+                    "answer": "..."  # Placeholder while waiting for the answer
+                }
+            )
+            
+            # Refresh the chat display to show the question immediately
+            display_chat()
+
+            # Fetch the answer asynchronously
             with st.spinner("Thinking..."):
                 answer = ask_question(
                     st.session_state.documents, prompt, st.session_state.chat_history
                 )
 
-            st.session_state.chat_history.append(
-                {
-                    "question": prompt,
-                    "answer": answer,
-                }
-            )
+            # Update the last entry with the generated answer
+            st.session_state.chat_history[-1]["answer"] = answer
 
         except Exception as e:
             st.error(f"Error processing question: {e}")
-
 
 def reset_session():
     st.session_state.documents = {}
