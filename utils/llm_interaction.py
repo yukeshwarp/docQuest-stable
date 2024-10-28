@@ -291,7 +291,7 @@ def ask_question(documents, question, chat_history):
                 },
                 {"role": "user", "content": relevance_check_prompt},
             ],
-            "temperature": 0.0,
+            "temperature": 0.2,
         }
 
         max_retries = 5
@@ -430,7 +430,7 @@ def ask_question(documents, question, chat_history):
             },
             {"role": "user", "content": prompt_message},
         ],
-        "temperature": 0.0,
+        "temperature": 0.3,
     }
 
     try:
