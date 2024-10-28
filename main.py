@@ -4,7 +4,6 @@ from utils.pdf_processing import process_pdf_pages
 from utils.llm_interaction import ask_question
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
-import tiktoken
 from docx import Document
 
 if "documents" not in st.session_state:
@@ -15,12 +14,6 @@ if "uploaded_files" not in st.session_state:
     st.session_state.uploaded_files = []
 
 
-def count_tokens(text, model="gpt-4o"):
-    encoding = tiktoken.encoding_for_model(model)
-    tokens = encoding.encode(text)
-    return len(tokens)
-
-
 def handle_question(prompt):
     if prompt:
         try:
@@ -29,14 +22,10 @@ def handle_question(prompt):
                     st.session_state.documents, prompt, st.session_state.chat_history
                 )
 
-            output_tokens = count_tokens(answer)
-
             st.session_state.chat_history.append(
                 {
                     "question": prompt,
                     "answer": answer,
-                    "input_tokens": total_input_tokens,
-                    "output_tokens": output_tokens,
                 }
             )
 
@@ -54,17 +43,15 @@ def display_chat():
     if st.session_state.chat_history:
         for i, chat in enumerate(st.session_state.chat_history):
             # Display the user's question
-            st.code(f"Question: {chat['question']}\nTokens: {chat['input_tokens']}", language="markdown")
+            st.code(f"Question: {chat['question']}", language="markdown")
 
             # Display the assistant's answer
-            st.code(f"Answer: {chat['answer']}\nTokens: {chat['output_tokens']}", language="markdown")
+            st.code(f"Answer: {chat['answer']}", language="markdown")
 
             # Generate and provide the download option for each chat in Word format
             chat_content = {
                 "question": chat["question"],
                 "answer": chat["answer"],
-                "input_tokens": chat["input_tokens"],
-                "output_tokens": chat["output_tokens"],
             }
 
             def generate_word_document(content):
@@ -72,8 +59,6 @@ def display_chat():
                 doc.add_heading("Chat Response", 0)
                 doc.add_paragraph(f"Question: {content['question']}")
                 doc.add_paragraph(f"Answer: {content['answer']}")
-                doc.add_paragraph(f"Input Tokens: {content['input_tokens']}")
-                doc.add_paragraph(f"Output Tokens: {content['output_tokens']}")
                 return doc
 
             doc = generate_word_document(chat_content)
