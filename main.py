@@ -47,7 +47,7 @@ def display_chat():
 
             # Display the assistant's answer
             st.code(f"Answer: {chat['answer']}", language="markdown")
-            st.divider()
+
             # Generate and provide the download option for each chat in Word format
             chat_content = {
                 "question": chat["question"],
@@ -72,6 +72,7 @@ def display_chat():
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
+            st.divider()
 
 
 
