@@ -127,8 +127,9 @@ with st.sidebar:
             label="Download Document Analysis",
             data=download_data,
             file_name="document_analysis.json",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            mime="application/json",
         )
+
 
 st.image("logoD.png", width=200)
 st.title("docQuest")
