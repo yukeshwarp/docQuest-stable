@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
 import tiktoken
 from docx import Document
-import pyperclip
 
 if "documents" not in st.session_state:
     st.session_state.documents = {}
@@ -25,11 +24,6 @@ def count_tokens(text, model="gpt-4o"):
 def handle_question(prompt):
     if prompt:
         try:
-            input_tokens = count_tokens(prompt)
-            document_tokens = count_tokens(json.dumps(st.session_state.documents))
-            total_input_tokens = input_tokens + document_tokens
-            st.sidebar.write(f"Total cur Input Tokens: {total_input_tokens}")
-
             with st.spinner("Thinking..."):
                 answer = ask_question(
                     st.session_state.documents, prompt, st.session_state.chat_history
@@ -59,19 +53,13 @@ def reset_session():
 def display_chat():
     if st.session_state.chat_history:
         for i, chat in enumerate(st.session_state.chat_history):
-            user_message = f"""
-            <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:right;'>
-            {chat['question']}
-            <small style='color:grey;'>Tokens: {chat['input_tokens']}</small></div>
-            """
-            assistant_message = f"""
-            <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>
-            {chat['answer']}
-            <small style='color:grey;'>Tokens: {chat['output_tokens']}</small></div>
-            """
-            st.markdown(user_message, unsafe_allow_html=True)
-            st.markdown(assistant_message, unsafe_allow_html=True)
+            # Display the user's question
+            st.code(f"Question: {chat['question']}\nTokens: {chat['input_tokens']}", language="markdown")
 
+            # Display the assistant's answer
+            st.code(f"Answer: {chat['answer']}\nTokens: {chat['output_tokens']}", language="markdown")
+
+            # Generate and provide the download option for each chat in Word format
             chat_content = {
                 "question": chat["question"],
                 "answer": chat["answer"],
@@ -94,17 +82,12 @@ def display_chat():
             word_io.seek(0)
 
             st.download_button(
-                label="↴",
+                label="↴ Download Chat",
                 data=word_io,
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
 
-            if st.button(f"▣", key=f"copy_chat_{i+1}"):
-                pyperclip.copy(
-                    f"Question: {chat['question']}\nAnswer: {chat['answer']}"
-                )
-                st.success("Chat copied to clipboard!")
 
 
 with st.sidebar:
@@ -171,10 +154,3 @@ if st.session_state.documents:
         handle_question(prompt)
 
 display_chat()
-
-total_input_tokens = sum(chat["input_tokens"] for chat in st.session_state.chat_history)
-total_output_tokens = sum(
-    chat["output_tokens"] for chat in st.session_state.chat_history
-)
-st.sidebar.write(f"Total Input Tokens: {total_input_tokens}")
-st.sidebar.write(f"Total Output Tokens: {total_output_tokens}")
