@@ -43,10 +43,10 @@ def display_chat():
     if st.session_state.chat_history:
         for i, chat in enumerate(st.session_state.chat_history):
             # Display the user's question
-            st.code(f"Question: {chat['question']}", language="markdown")
+            st.code(f"{chat['question']}", language="markdown")
 
             # Display the assistant's answer
-            st.code(f"Answer: {chat['answer']}", language="markdown")
+            st.code(f"{chat['answer']}", language="markdown")
 
             # Generate and provide the download option for each chat in Word format
             chat_content = {
@@ -67,7 +67,7 @@ def display_chat():
             word_io.seek(0)
 
             st.download_button(
-                label="↴ Download Chat",
+                label="↴",
                 data=word_io,
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
