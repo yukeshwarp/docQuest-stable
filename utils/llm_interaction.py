@@ -430,7 +430,7 @@ def ask_question(documents, question, chat_history):
             },
             {"role": "user", "content": prompt_message},
         ],
-        "temperature": 0.3,
+        "temperature": 0.0,
     }
 
     try:
