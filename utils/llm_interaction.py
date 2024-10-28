@@ -384,7 +384,7 @@ def ask_question(documents, question, chat_history):
     )
 
     prompt_message = f"""
-        You are given the following relevant content to question asked from multiple documents.
+        You are given the following relevant content from multiple documents related to the question asked.
         relevant document data:
         ---
         {combined_relevant_content}
@@ -398,6 +398,22 @@ def ask_question(documents, question, chat_history):
         Ensure the response is clearly formatted for human readability.
 
         Include references to the document name and page number(s) where the information was found.
+
+        **Few-shot Examples for similar questions:**
+        
+        **Example 1:**
+        - **Question:** "Tell me about this document."
+        - **Response:** This document, titled "Project Overview," covers the main objectives and timeline for the XYZ Project. The document spans 10 pages, providing detailed sections on the project's goals, key milestones, and resource allocations. (Reference: Document A, Page 1-10)
+
+        **Example 2:**
+        - **Question:** "Tell me about this document."
+        - **Response:** This document, titled "Annual Financial Report," provides a summary of the financial performance for the fiscal year 2023, including revenue breakdowns, expense allocations, and key financial metrics. It includes a section on projected forecasts for the coming year. (Reference: Document B, Page 3-15)
+
+        **Example 3:**
+        - **Question:** "Tell me about this document."
+        - **Response:** The document titled "Employee Handbook" outlines company policies, benefits, and code of conduct. It serves as a guide for both new and current employees and is 35 pages long, covering sections such as workplace safety, leave policies, and performance evaluation criteria. (Reference: Document C, Page 1-35)
+
+        **Please provide the response to the following question following the format in the examples:**
 
         Question: {preprocessed_question}
         """
