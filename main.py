@@ -43,10 +43,10 @@ def display_chat():
     if st.session_state.chat_history:
         for i, chat in enumerate(st.session_state.chat_history):
             # Display the user's question
-            st.code(f"{chat['question']}", language="markdown")
+            st.code(f"{chat['question']}", language=None, wrap_lines=True)
 
             # Display the assistant's answer
-            st.code(f"{chat['answer']}", language="markdown")
+            st.code(f"{chat['answer']}", language=None, wrap_lines=True)
 
             # Generate and provide the download option for each chat in Word format
             chat_content = {
