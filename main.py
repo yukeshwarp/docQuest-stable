@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
 import tiktoken
 from docx import Document
-import pyperclip
 
 if "documents" not in st.session_state:
     st.session_state.documents = {}
@@ -25,6 +24,10 @@ def count_tokens(text, model="gpt-4o"):
 def handle_question(prompt):
     if prompt:
         try:
+            input_tokens = count_tokens(prompt)
+            document_tokens = count_tokens(json.dumps(st.session_state.documents))
+            total_input_tokens = input_tokens + document_tokens
+
             with st.spinner("Thinking..."):
                 answer = ask_question(
                     st.session_state.documents, prompt, st.session_state.chat_history
@@ -36,6 +39,8 @@ def handle_question(prompt):
                 {
                     "question": prompt,
                     "answer": answer,
+                    "input_tokens": total_input_tokens,
+                    "output_tokens": output_tokens,
                 }
             )
 
@@ -55,10 +60,12 @@ def display_chat():
             user_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:right;'>
             {chat['question']}
+            <small style='color:grey;'>Tokens: {chat['input_tokens']}</small></div>
             """
             assistant_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>
             {chat['answer']}
+            <small style='color:grey;'>Tokens: {chat['output_tokens']}</small></div>
             """
             st.markdown(user_message, unsafe_allow_html=True)
             st.markdown(assistant_message, unsafe_allow_html=True)
@@ -66,6 +73,8 @@ def display_chat():
             chat_content = {
                 "question": chat["question"],
                 "answer": chat["answer"],
+                "input_tokens": chat["input_tokens"],
+                "output_tokens": chat["output_tokens"],
             }
 
             def generate_word_document(content):
@@ -73,6 +82,8 @@ def display_chat():
                 doc.add_heading("Chat Response", 0)
                 doc.add_paragraph(f"Question: {content['question']}")
                 doc.add_paragraph(f"Answer: {content['answer']}")
+                doc.add_paragraph(f"Input Tokens: {content['input_tokens']}")
+                doc.add_paragraph(f"Output Tokens: {content['output_tokens']}")
                 return doc
 
             doc = generate_word_document(chat_content)
@@ -86,12 +97,6 @@ def display_chat():
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
-
-            if st.button(f"▣", key=f"copy_chat_{i+1}"):
-                pyperclip.copy(
-                    f"Question: {chat['question']}\nAnswer: {chat['answer']}"
-                )
-                st.success("Chat copied to clipboard!")
 
 
 with st.sidebar:
@@ -145,7 +150,7 @@ with st.sidebar:
             label="Download Document Analysis",
             data=download_data,
             file_name="document_analysis.json",
-            mime="application/json",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
 
 st.image("logoD.png", width=200)
