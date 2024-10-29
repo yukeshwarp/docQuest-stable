@@ -14,7 +14,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "uploaded_files" not in st.session_state:
     st.session_state.uploaded_files = []
-st.markdown('<style> ._profileContainer_51w34_53 {height: 0px;! width: 0px;!}</style>', unsafe_allow_html=True)
+#st.markdown('<style> ._profileContainer_51w34_53 {height: 0px;! width: 0px;!}</style>', unsafe_allow_html=True)
 # Token counting function
 def count_tokens(text, model="gpt-4o"):
     encoding = tiktoken.encoding_for_model(model)
