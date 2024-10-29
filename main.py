@@ -36,8 +36,6 @@ def handle_question(prompt):
                 {
                     "question": prompt,
                     "answer": answer,
-                    "input_tokens": total_input_tokens,
-                    "output_tokens": output_tokens,
                 }
             )
 
