@@ -4,7 +4,9 @@ from utils.pdf_processing import process_pdf_pages
 from utils.llm_interaction import ask_question
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import io
+import tiktoken
 from docx import Document
+import pyperclip
 
 if "documents" not in st.session_state:
     st.session_state.documents = {}
@@ -12,6 +14,12 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "uploaded_files" not in st.session_state:
     st.session_state.uploaded_files = []
+
+
+def count_tokens(text, model="gpt-4o"):
+    encoding = tiktoken.encoding_for_model(model)
+    tokens = encoding.encode(text)
+    return len(tokens)
 
 
 def handle_question(prompt):
@@ -22,10 +30,14 @@ def handle_question(prompt):
                     st.session_state.documents, prompt, st.session_state.chat_history
                 )
 
+            output_tokens = count_tokens(answer)
+
             st.session_state.chat_history.append(
                 {
                     "question": prompt,
                     "answer": answer,
+                    "input_tokens": total_input_tokens,
+                    "output_tokens": output_tokens,
                 }
             )
 
@@ -42,16 +54,24 @@ def reset_session():
 def display_chat():
     if st.session_state.chat_history:
         for i, chat in enumerate(st.session_state.chat_history):
-            # Display the user's question
-            st.code(f"{chat['question']}", language="markdown", wrap_lines=True)
+            user_message = f"""
+            <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:right;'>
+            {chat['question']}
+            <small style='color:grey;'>Tokens: {chat['input_tokens']}</small></div>
+            """
+            assistant_message = f"""
+            <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>
+            {chat['answer']}
+            <small style='color:grey;'>Tokens: {chat['output_tokens']}</small></div>
+            """
+            st.markdown(user_message, unsafe_allow_html=True)
+            st.markdown(assistant_message, unsafe_allow_html=True)
 
-            # Display the assistant's answer
-            st.code(f"{chat['answer']}", language="markdown", wrap_lines=True)
-
-            # Generate and provide the download option for each chat in Word format
             chat_content = {
                 "question": chat["question"],
                 "answer": chat["answer"],
+                "input_tokens": chat["input_tokens"],
+                "output_tokens": chat["output_tokens"],
             }
 
             def generate_word_document(content):
@@ -59,6 +79,8 @@ def display_chat():
                 doc.add_heading("Chat Response", 0)
                 doc.add_paragraph(f"Question: {content['question']}")
                 doc.add_paragraph(f"Answer: {content['answer']}")
+                doc.add_paragraph(f"Input Tokens: {content['input_tokens']}")
+                doc.add_paragraph(f"Output Tokens: {content['output_tokens']}")
                 return doc
 
             doc = generate_word_document(chat_content)
@@ -72,8 +94,12 @@ def display_chat():
                 file_name=f"chat_{i+1}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
-            st.divider()
 
+            if st.button(f"▣", key=f"copy_chat_{i+1}"):
+                pyperclip.copy(
+                    f"Question: {chat['question']}\nAnswer: {chat['answer']}"
+                )
+                st.success("Chat copied to clipboard!")
 
 
 with st.sidebar:
@@ -130,7 +156,6 @@ with st.sidebar:
             mime="application/json",
         )
 
-
 st.image("logoD.png", width=200)
 st.title("docQuest")
 st.subheader("Unveil the Essence, Compare Easily, Analyze Smartly", divider="orange")
@@ -141,3 +166,10 @@ if st.session_state.documents:
         handle_question(prompt)
 
 display_chat()
+
+total_input_tokens = sum(chat["input_tokens"] for chat in st.session_state.chat_history)
+total_output_tokens = sum(
+    chat["output_tokens"] for chat in st.session_state.chat_history
+)
+st.sidebar.write(f"Total Input Tokens: {total_input_tokens}")
+st.sidebar.write(f"Total Output Tokens: {total_output_tokens}")
