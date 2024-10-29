@@ -210,27 +210,25 @@ def ask_question(documents, question, chat_history):
     # Calculate token count for all pages, removing the token limit check
     for doc_name, doc_data in documents.items():
         for page in doc_data["pages"]:
-            total_tokens += calculate_token_count(page.get('text_summary', 'No summary available'))
             total_tokens += calculate_token_count(page.get('full_text', 'No full text available'))
 
     # No token limit check, always run relevance checking
     def check_page_relevance(doc_name, page):
-        page_summary = page.get('text_summary', 'No summary available') 
-        page_full_text = page.get('full_text', 'No full text available') 
+        page_full_text = page.get('full_text', 'No full text available')
         image_explanation = "\n".join(
             f"Page {img['page_number']}: {img['explanation']}" for img in page.get("image_analysis", [])
         ) or "No image analysis."
         
         relevance_check_prompt = f"""
-        Here's the summary, full text, and image analysis of a page:
+        Here's the full text and image analysis of a page:
 
         Document: {doc_name}, Page {page['page_number']}
-        Summary: {page_summary}
+        Full Text: {page_full_text}
         Image Analysis: {image_explanation}
 
         Question asked by user: {preprocessed_question}
 
-        Respond with "yes" if this page contains relevant information to answer the user's question, otherwise respond with "no".
+        Respond with "yes" if this page contains any relevant information related to the user's question, even if only a small part of the page has relevant content. Otherwise, respond with "no".
         """
 
         relevance_data = {
@@ -251,12 +249,11 @@ def ask_question(documents, question, chat_history):
             )
             response.raise_for_status()
             relevance_answer = response.json().get('choices', [{}])[0].get('message', {}).get('content', "no").strip().lower()
-
+            logging.error(f"{relevance_answer}, page: {page['page_number']}")
             if relevance_answer == "yes":
                 return {
                     "doc_name": doc_name,
                     "page_number": page["page_number"],
-                    "text_summary": page_summary,
                     "full_text": page_full_text,
                     "image_explanation": image_explanation
                 }
@@ -265,7 +262,7 @@ def ask_question(documents, question, chat_history):
             logging.error(f"Error checking relevance of page {page['page_number']} in '{doc_name}': {e}")
             return None
 
-    
+    # Run the relevance check in parallel for each page
     relevant_pages = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_page = {
@@ -279,7 +276,7 @@ def ask_question(documents, question, chat_history):
             if result:
                 relevant_pages.append(result)
 
-    
+    # Handle cases with no relevant pages found
     if not relevant_pages:
         return "The content of the provided documents does not contain an answer to your question."
 
@@ -287,7 +284,6 @@ def ask_question(documents, question, chat_history):
     for page in relevant_pages:
         combined_relevant_content += (
             f"\nDocument: {page['doc_name']}, Page {page['page_number']}\n"
-            f"Summary: {page['text_summary']}\n"
             f"Full Text: {page['full_text']}\n"
             f"Image Analysis: {page['image_explanation']}\n"
         )
