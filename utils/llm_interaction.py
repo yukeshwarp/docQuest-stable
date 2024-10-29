@@ -291,7 +291,7 @@ def ask_question(documents, question, chat_history):
                 },
                 {"role": "user", "content": relevance_check_prompt},
             ],
-            "temperature": 0.2,
+            "temperature": 0.0,
         }
 
         max_retries = 5
@@ -384,7 +384,7 @@ def ask_question(documents, question, chat_history):
     )
 
     prompt_message = f"""
-        You are given the following relevant content from multiple documents related to the question asked.
+        You are given the following relevant content to question asked from multiple documents.
         relevant document data:
         ---
         {combined_relevant_content}
