@@ -55,12 +55,10 @@ def display_chat():
             user_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:right;'>
             {chat['question']}
-            <small style='color:grey;'>Tokens: {chat['input_tokens']}</small></div>
             """
             assistant_message = f"""
             <div style='padding:10px; border-radius:10px; margin:5px 0; text-align:left;'>
             {chat['answer']}
-            <small style='color:grey;'>Tokens: {chat['output_tokens']}</small></div>
             """
             st.markdown(user_message, unsafe_allow_html=True)
             st.markdown(assistant_message, unsafe_allow_html=True)
@@ -68,8 +66,6 @@ def display_chat():
             chat_content = {
                 "question": chat["question"],
                 "answer": chat["answer"],
-                "input_tokens": chat["input_tokens"],
-                "output_tokens": chat["output_tokens"],
             }
 
             def generate_word_document(content):
@@ -77,8 +73,6 @@ def display_chat():
                 doc.add_heading("Chat Response", 0)
                 doc.add_paragraph(f"Question: {content['question']}")
                 doc.add_paragraph(f"Answer: {content['answer']}")
-                doc.add_paragraph(f"Input Tokens: {content['input_tokens']}")
-                doc.add_paragraph(f"Output Tokens: {content['output_tokens']}")
                 return doc
 
             doc = generate_word_document(chat_content)
