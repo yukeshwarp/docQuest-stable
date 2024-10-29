@@ -30,32 +30,28 @@ MIME_TYPES = {
     "pptm": "application/vnd.ms-powerpoint.presentation.macroEnabled.12",
     "potm": "application/vnd.ms-powerpoint.template.macroEnabled.12",
     "ppsm": "application/vnd.ms-powerpoint.slideshow.macroEnabled.12",
-    "mdb": "application/vnd.ms-access",
+    "mdb": "application/vnd.ms-access"
 }
 
-
 def get_mime_type(file_name):
-    extension = file_name.split(".")[-1].lower()
+    """Get the MIME type based on the file extension."""
+    extension = file_name.split('.')[-1].lower()
     return MIME_TYPES.get(extension, None)
 
-
 def convert_office_to_pdf(office_file):
+    """Convert Office files to PDF using Azure Function and return the PDF as a BytesIO object."""
     mime_type = get_mime_type(office_file.name)
     if mime_type is None:
         raise ValueError(f"Unsupported file type: {office_file.name}")
 
     headers = {
         "Content-Type": "application/octet-stream",
-        "Content-Type-Actual": mime_type,
+        "Content-Type-Actual": mime_type
     }
 
-    response = requests.post(
-        azure_function_url, data=office_file.read(), headers=headers
-    )
-
+    response = requests.post(azure_function_url, data=office_file.read(), headers=headers)
+    
     if response.status_code == 200:
-        return io.BytesIO(response.content)
+        return io.BytesIO(response.content)  # Return the PDF content as a BytesIO object
     else:
-        raise Exception(
-            f"File conversion failed with status code: {response.status_code}, {response.text}"
-        )
+        raise Exception(f"File conversion failed with status code: {response.status_code}, {response.text}")
